@@ -201,6 +201,74 @@ server <- function(input, output) {
         )
       )
   })
+  
+  output$mortality_by_treatment_plot <- renderPlotly({
+    mortality <- full_data %>%
+      group_by(Treatment_Group = factor(TRTMT, labels = c("Placebo", "Digoxin")), 
+               Mortality_Status = factor(DEATH, labels = c("Alive", "Dead"))) %>%
+      summarise(Count = n(), .groups = "drop")
+    
+    plot_ly(mortality, 
+            x = ~Treatment_Group, 
+            y = ~Count, 
+            color = ~Mortality_Status, 
+            type = 'bar',
+            text = ~paste(Count, " patients"), 
+            textposition = 'auto',
+            marker = list(line = list(color = 'rgb(8,48,107)', width = 1.5))) %>%
+      layout(
+        title = "Mortality by Treatment Group",
+        barmode = 'group',
+        xaxis = list(title = "Treatment Group"),
+        yaxis = list(title = "Number of Patients"),
+        legend = list(title = list(text = "Mortality Status"))
+      )
+  })
+  
+  output$CVD_mortality_plot <- renderPlotly({
+    CVD_by_group <- ggplot(full_data, mapping = aes(x = CVD, fill = factor(DEATH, labels = c("Alive", "Dead")))) +
+      geom_bar(color = "black", width = 0.8) +
+      facet_wrap(~ factor(TRTMT, labels = c("Placebo", "Digoxin")), nrow = 1) +
+      theme_test() +
+      scale_fill_manual(values = c("Alive" = "skyblue", "Dead" = "tomato")) +
+      labs(
+        title = "Impact of Cardiovascular Disease on Mortality by Treatment Group",
+        x = "Cardiovascular Disease",
+        y = "Count"
+      ) +
+      guides(fill = guide_legend(title = "Mortality Status"))
+    
+    ggplotly(CVD_by_group)
+  })
+  
+  output$summary_table <- renderDT({
+    data <- filtered_data()
+    
+    summary <- data %>%
+      group_by(TRTMT) %>%
+      summarize(
+        AGE_mean = round(mean(AGE, na.rm = TRUE), 1),
+        AGE_sd = round(sd(AGE, na.rm = TRUE), 1),
+        BMI_mean = round(mean(BMI, na.rm = TRUE), 1),
+        BMI_sd = round(sd(BMI, na.rm = TRUE), 1),
+        Patients = n(),
+        Male = sum(SEX == 1, na.rm = TRUE),
+        Female = sum(SEX == 2, na.rm = TRUE)
+      ) %>%
+      mutate(Treatment = ifelse(TRTMT == 1, "Digoxin", "Placebo")) %>%
+      select(Treatment, Patients, AGE_mean, AGE_sd, BMI_mean, BMI_sd, Male, Female)
+    
+    datatable(summary, options = list(pageLength = 5, scrollX = TRUE))
+  })
+  
+  output$download_data <- downloadHandler(
+    filename = function() {
+      paste("Digitalis_Data-", Sys.Date(), ".csv", sep = "")
+    },
+    content = function(file) {
+      write.csv(filtered_data(), file, row.names = FALSE)
+    }
+  )
 }
 
 shinyApp(ui = ui, server = server)
