@@ -1,30 +1,49 @@
 library(shiny)
 library(bslib)
 library(thematic)
+library(dplyr)
 
 ggplot2::theme_set(ggplot2::theme_minimal())
 thematic_shiny()
+
+server <- function(input, output) {
+  full_data <- read.csv("DIG.csv")
+  
+  filtered_data <- reactive({
+    data <- full_data %>%
+      filter(AGE >= input$age_range[1] & AGE <= input$age_range[2])
+    
+    if (input$gender != "All") {
+      data <- data %>% filter(SEX == ifelse(input$gender == "Male", 1, 2))
+    }
+    data
+  })
+  
+  output$total_patients <- renderText({
+    nrow(filtered_data())
+  })
+  
+  output$download_data <- downloadHandler(
+    filename = function() {
+      paste("Filtered_DIG_Data-", Sys.Date(), ".csv", sep = "")
+    },
+    content = function(file) {
+      write.csv(filtered_data(), file, row.names = FALSE)
+    }
+  )
+}
 
 ui <- fluidPage(
   theme = bs_theme(bootswatch = "darkly", 
                    base_font = font_google("Lato"), 
                    heading_font = font_google("Raleway")),
   
-
   div(
     style = "text-align: center; margin-bottom: 20px;",
-    h1("DIG Study")
+    h1("DIG Trial Analysis")
   ),
   
-  div(
-    style = "background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;",
-    h4("Overview of This Study"),
-    p("The DIG (Digitalis Investigation Group) Trial was conducted to evaluate the safety and efficacy of Digoxin in treating congestive heart failure.")
-  ),
-  
-
- # Putting in download button for dig - youtube tutorial add download file to shiny 
-    sidebarLayout(
+  sidebarLayout(
     sidebarPanel(
       sliderInput("age_range", "Age Range", 
                   min = 30, max = 100, value = c(30, 100)),
@@ -33,12 +52,12 @@ ui <- fluidPage(
       downloadButton("download_data", "Download Data")
     ),
     mainPanel(
-      h3("Graphs "),
-      p("Graphs.")
+      h3("Filtered Patients:"),
+      textOutput("total_patients")
     )
   )
 )
 
-server <- function(input, output) {}
-
 shinyApp(ui = ui, server = server)
+
+    
