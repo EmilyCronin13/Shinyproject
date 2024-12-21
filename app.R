@@ -30,8 +30,6 @@ ui <- fluidPage(
     }
   ")),
   
-  
-  #Adding in the giphs from giphy . com ! and the digitalis logo 
   div(
     style = "text-align: center; margin-bottom: 20px;",
     div(
@@ -109,13 +107,100 @@ ui <- fluidPage(
                   min = 30, max = 100, value = c(30, 100)),
       selectizeInput("gender", "Gender", 
                      choices = c("All", "Male", "Female"), selected = "All", width = "100%"),
-      
       downloadButton("download_data", "Download Digitalis Data", class = "btn-primary"),
-      
       tags$img(src = "digi image.png", style = "width: 100%; height: auto; margin-top: 20px;")
-    ))
+    ),
+    layout_columns(
+      card(
+        card_header("Patient Summary by Treatment Group", class = "h6 text-success"),
+        plotlyOutput("treatment_summary_plot")
+      ),
+      card(
+        card_header("Mortality by Treatment Group", class = "h6 text-success"),
+        plotlyOutput("mortality_by_treatment_plot")
+      ),
+      card(
+        card_header("CVD Influence on Mortality by Treatment Group", class = "h6 text-success"),
+        plotlyOutput("CVD_mortality_plot")
+      ),
+      card(
+        card_header("Summary Table", class = "h6 text-success"),
+        DTOutput("summary_table")
+      ),
+      col_widths = c(6, 6, 6),
+      row_heights = c(6, 6)
+    )
+  ),
+  
+  div(
+    class = "summary-box",
+    h4("Study Summary"),
+    p("The Digitalis Investigation Group (DIG) trial was a landmark study evaluating the role of digoxin in treating patients with heart failure in sinus rhythm. Conducted across more than 300 centers in the U.S. and Canada, this double-blind randomized trial recruited patients with heart failure and ejection fraction ≤45%.",
+      class = "summary-text"),
+    p("The trial assessed outcomes including cardiovascular mortality, hospitalizations, and symptomatic relief in patients treated with digoxin or placebo. Key findings included reductions in hospitalizations due to worsening heart failure, though overall mortality rates remained unchanged.",
+      class = "summary-text"),
+    p("The DIG dataset remains a valuable resource for understanding the therapeutic benefits and safety concerns associated with digoxin therapy.",
+      class = "summary-text")
+  )
 )
 
-server <- function(input, output) {}
+server <- function(input, output) {
+  full_data <- read.csv("DIG.csv")
+  
+  filtered_data <- reactive({
+    data <- full_data %>%
+      filter(AGE >= input$age_range[1] & AGE <= input$age_range[2])
+    
+    if (input$gender != "All") {
+      data <- data %>% filter(SEX == ifelse(input$gender == "Male", 1, 2))
+    }
+    data
+  })
+  
+  output$total_study_patients <- renderText({
+    nrow(full_data)
+  })
+  
+  output$total_patients <- renderText({
+    nrow(filtered_data())
+  })
+  
+  output$avg_age <- renderText({
+    filtered_data() %>% summarize(AverageAge = mean(AGE, na.rm = TRUE)) %>% pull(AverageAge)
+  })
+  
+  output$treatment_summary_plot <- renderPlotly({
+    treatment_placebo_cp <- full_data %>%
+      count(TRTMT) %>%
+      mutate(percentage = round(n / sum(n) * 100, 2))
+    
+    plot_ly(treatment_placebo_cp) %>%
+      add_trace(
+        x = ~TRTMT, 
+        y = ~n, 
+        type = 'bar', 
+        name = ~TRTMT,
+        text = ~paste(n, " patients", "<br>", percentage, "%"), 
+        textposition = 'auto',
+        marker = list(
+          color = c('tomato', 'lightgreen')[as.factor(treatment_placebo_cp$TRTMT)],
+          line = list(color = 'rgb(8,48,107)', width = 1.3)
+        )
+      ) %>%
+      layout(
+        title = "Patient Summary by Treatment Group",
+        barmode = 'group',
+        xaxis = list(title = "Patients treatment Group"),
+        yaxis = list(title = "Number of patients in group"),
+        showlegend = TRUE,  
+        legend = list(
+          title = list(text = 'Treatment group each patient belongs to'),
+          x = 1, y = 0.8, 
+          bordercolor = 'rgba(0, 0, 0, 0.1)',  
+          borderwidth = 2
+        )
+      )
+  })
+}
 
 shinyApp(ui = ui, server = server)
