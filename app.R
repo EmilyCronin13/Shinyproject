@@ -15,7 +15,8 @@ ui <- fluidPage(
       textOutput("total_patients")
     )
   )
-)
+) 
+#comment #daaah
 
 server <- function(input, output) {
   full_data <- tibble(AGE = sample(30:100, 1000, replace = TRUE), SEX = sample(1:2, 1000, replace = TRUE))
