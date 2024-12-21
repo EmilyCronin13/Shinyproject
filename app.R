@@ -2,7 +2,7 @@ library(shiny)
 library(bslib)
 library(thematic)
 
-# Set default theme for ggplot2
+
 ggplot2::theme_set(ggplot2::theme_minimal())
 thematic_shiny()
 
@@ -25,5 +25,4 @@ ui <- fluidPage(
 ) 
 server <- function(input, output) {}
 
-# Run the application 
 shinyApp(ui = ui, server = server)
