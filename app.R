@@ -1,45 +1,29 @@
 library(shiny)
-library(tidyverse)
+library(bslib)
+library(thematic)
+
+# Set default theme for ggplot2
+ggplot2::theme_set(ggplot2::theme_minimal())
+thematic_shiny()
+
 
 ui <- fluidPage(
-  titlePanel("DIG Study"),
+  theme = bs_theme(bootswatch = "darkly", 
+                   base_font = font_google("Lato"), 
+                   heading_font = font_google("Raleway")),
   
-  sidebarLayout(
-    sidebarPanel(
-      sliderInput("age_range", "Age Range", min = 30, max = 100, value = c(30, 100)),
-      selectInput("gender", "Gender", choices = c("All", "Male", "Female"), selected = "All")
-    ),
-    mainPanel(
-      textOutput("total_study_patients"),
-      textOutput("avg_age"),
-      textOutput("total_patients")
-    )
+  div(
+    style = "text-align: center; margin-bottom: 20px;",
+    h1("DIG Trial Analysis")
+  ),
+
+  div(
+    style = "background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;",
+    h4("Overview of This Study"),
+    p("The DIG (Digitalis Investigation Group) Trial was conducted to evaluate the safety and efficacy of Digoxin in treating congestive heart failure.")
   )
 ) 
-#comment #daaah
+server <- function(input, output) {}
 
-server <- function(input, output) {
-  full_data <- tibble(AGE = sample(30:100, 1000, replace = TRUE), SEX = sample(1:2, 1000, replace = TRUE))
-  
-  filtered_data <- reactive({
-    data <- full_data %>% filter(AGE >= input$age_range[1] & AGE <= input$age_range[2])
-    if (input$gender != "All") {
-      data <- data %>% filter(SEX == ifelse(input$gender == "Male", 1, 2))
-    }
-    data
-  })
-  
-  output$total_study_patients <- renderText({
-    paste("Total Patients in Study:", nrow(full_data))
-  })
-  
-  output$total_patients <- renderText({
-    paste("Filtered Patients:", nrow(filtered_data()))
-  })
-  
-  output$avg_age <- renderText({
-    paste("Average Age (Filtered):", round(mean(filtered_data()$AGE, na.rm = TRUE), 1))
-  })
-}
-
+# Run the application 
 shinyApp(ui = ui, server = server)
